@@ -5,6 +5,16 @@
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.lookfukc/no-n1-spring-boot-starter.svg)](https://central.sonatype.com/search?q=io.github.lookfukc%20no-n1)
 [![License](https://img.shields.io/github/license/lookfukc/no-n1-spring-boot-starter)](LICENSE)
 
+## 版本要求
+
+| 依赖 | 最低版本 | 推荐版本 | 说明 |
+|------|----------|----------|------|
+| **Java** | 17+ | 17 或 21 | 本项目编译和运行需要 Java 17 或更高版本 |
+| **Spring Boot** | 3.0+ | 3.2+ | 本项目基于 Spring Boot 3.2.0 构建，不支持 Spring Boot 2.x |
+| **Spring Framework** | 6.0+ | 6.1+ | Spring Boot 3.x 基于 Spring Framework 6.x |
+
+> **注意**：Spring Boot 3.x 使用 `jakarta.*` 命名空间（Jakarta EE），而不是 `javax.*`（Java EE）。如果你的项目还在使用 Spring Boot 2.x，需要先升级到 Spring Boot 3.x 才能使用本库。
+
 ## 项目简介
 
 N+1 查询是数据库访问中常见的性能问题，即执行了多次数据库查询而不是单次批量查询。本库提供了一种优雅的解决方案，通过批量查询关联对象并将其组装到 VO 中，将 O(n) 的查询复杂度降低到 O(1)，显著提升性能。
