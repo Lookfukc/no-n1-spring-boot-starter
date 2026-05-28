@@ -783,7 +783,9 @@ public class OrderController {
 | `voSetter` | `BiConsumer<T, R>` | 将关联对象设置到 VO |
 | `converter` | `Function<R, V>` | 可选，在设置前转换关联对象类型 |
 
+## 仓库地址
 
+[Maven 仓库](https://repo1.maven.org/maven2/io/github/lookfukc/no-n1-spring-boot-starter/1.0.0/)
 ## 许可证
 
 [Apache License 2.0](LICENSE)
