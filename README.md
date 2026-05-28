@@ -773,9 +773,6 @@ public class OrderController {
 | `voSetter` | `BiConsumer<T, R>` | 将关联对象设置到 VO |
 | `converter` | `Function<R, V>` | 可选，在设置前转换关联对象类型 |
 
-## 文档
-
-详细文档和示例请访问：[项目 Wiki](https://github.com/lookfukc/no-n1-spring-boot-starter/wiki)
 
 ## 许可证
 
