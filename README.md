@@ -9,11 +9,14 @@
 
 | 依赖 | 最低版本 | 推荐版本 | 说明 |
 |------|----------|----------|------|
-| **Java** | 17+ | 17 或 21 | 本项目编译和运行需要 Java 17 或更高版本 |
-| **Spring Boot** | 3.0+ | 3.2+ | 本项目基于 Spring Boot 3.2.0 构建，不支持 Spring Boot 2.x |
-| **Spring Framework** | 6.0+ | 6.1+ | Spring Boot 3.x 基于 Spring Framework 6.x |
+| **Java** | 11+ | 11 或 17+ | 本项目编译和运行需要 Java 11 或更高版本 |
+| **Spring Boot** | 2.3+ / 3.0+ | 2.7.x 或 3.2+ | 兼容 Spring Boot 2.x 和 3.x |
+| **Spring Framework** | 5.2+ / 6.0+ | 5.3.x 或 6.1+ | 分别对应 Spring Boot 2.x 和 3.x |
 
-> **注意**：Spring Boot 3.x 使用 `jakarta.*` 命名空间（Jakarta EE），而不是 `javax.*`（Java EE）。如果你的项目还在使用 Spring Boot 2.x，需要先升级到 Spring Boot 3.x 才能使用本库。
+> **兼容性说明**：
+> - 本库核心功能不依赖 `javax.*` 或 `jakarta.*` 命名空间，因此同时兼容 Spring Boot 2.x 和 3.x
+> - Spring Boot 2.x 使用 `javax.*`，Spring Boot 3.x 使用 `jakarta.*`，与本库无关
+> - 自动配置通过 `spring.factories`（Boot 2.x）和 `AutoConfiguration.imports`（Boot 3.x）双重支持
 
 ## 项目简介
 
@@ -31,11 +34,17 @@ N+1 查询是数据库访问中常见的性能问题，即执行了多次数据�
 
 ### Maven 依赖
 
+| 版本 | Spring Boot 兼容性 | 适用场景 |
+|------|-------------------|----------|
+| **1.1.0** | 2.3+ 和 3.x | 推荐使用，兼容所有版本 |
+| **1.0.0** | 仅 3.x | 早期版本，仅 Spring Boot 3 |
+
 ```xml
+<!-- 推荐版本：兼容 Spring Boot 2.x 和 3.x -->
 <dependency>
     <groupId>io.github.lookfukc</groupId>
     <artifactId>no-n1-spring-boot-starter</artifactId>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
 </dependency>
 ```
 

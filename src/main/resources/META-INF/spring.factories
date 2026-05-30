@@ -1,0 +1,1 @@
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=io.github.lookfukc.non1.autoconfigure.NoN1AutoConfiguration
