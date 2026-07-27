@@ -31,6 +31,9 @@
 - [大数据量处理](#大数据量处理)
   - [查询分批（queryBatchSize）](#查询分批querybatchsize)
   - [分页处理（pageSize / buildPage）](#分页处理pagesize--buildpage)
+- [分页查询集成](#分页查询集成)
+  - [PageHelper：分页总数自动透传](#pagehelper分页总数自动透传)
+  - [MyBatis-Plus 分页](#mybatis-plus-分页)
 - [多层嵌套查询](#多层嵌套查询)
   - [使用场景](#使用场景)
   - [方式一：withNested（推荐）](#方式一withnested推荐)
@@ -130,7 +133,8 @@ N+1 查询是数据库访问中常见的性能问题，即执行了多次数据�
 
 | 版本 | Spring Boot 兼容性 | 适用场景 |
 |------|-------------------|----------|
-| **1.2.0** | 2.3+ 和 3.x | 推荐使用，支持多层嵌套、大数据量处理、全链路优化 |
+| **1.3.0** | 2.3+ 和 3.x | 推荐使用，修复 PageHelper 分页总数丢失，支持多层嵌套、大数据量处理、全链路优化 |
+| **1.2.0** | 2.3+ 和 3.x | 支持多层嵌套、大数据量处理、全链路优化 |
 | **1.1.0** | 2.3+ 和 3.x | 兼容所有版本 |
 | **1.0.0** | 仅 3.x | 早期版本，仅 Spring Boot 3 |
 
@@ -141,7 +145,7 @@ N+1 查询是数据库访问中常见的性能问题，即执行了多次数据�
 <dependency>
     <groupId>io.github.lookfukc</groupId>
     <artifactId>no-n1-spring-boot-starter</artifactId>
-    <version>1.2.0</version>
+    <version>1.3.0</version>
 </dependency>
 
 <!-- Spring Boot AutoConfigure（provided 作用域，不会传递，需确保项目中存在） -->
@@ -156,7 +160,7 @@ N+1 查询是数据库访问中常见的性能问题，即执行了多次数据�
 **Gradle：**
 
 ```groovy
-implementation 'io.github.lookfukc:no-n1-spring-boot-starter:1.2.0'
+implementation 'io.github.lookfukc:no-n1-spring-boot-starter:1.3.0'
 // Spring Boot AutoConfigure（通常通过其他 starter 已引入，无需重复添加）
 // implementation 'org.springframework.boot:spring-boot-autoconfigure'
 ```
@@ -1007,6 +1011,60 @@ return RelationAssembler.from(hugeList, OrderVO.class, orderMapper::toVO)
     )
     .build();
 ```
+
+## 分页查询集成
+
+业务列表查询通常配合分页框架使用。`RelationAssembler.build()` 会自动处理分页总数的透传，规则如下：
+
+| 分页框架 | records（当前页数据） | total（总数） | 是否需要额外处理 |
+|----------|----------------------|---------------|------------------|
+| **PageHelper** | ✅ 自动转换 | ✅ 自动透传 | 否，开箱即用 |
+| **MyBatis-Plus 分页** | ✅ 自动转换 | ⚠️ 需手动重组 | 是，见下文 |
+| **手动 / 内存分页** | ✅ 自动转换 | — | total 本就不在 List 中，由调用方管理 |
+
+### PageHelper：分页总数自动透传
+
+PageHelper 的分页总数 `total` 绑定在 `com.github.pagehelper.Page`（继承自 `ArrayList`）上。如果直接在转换中把 `Page` 重建为普通 `ArrayList`，`total` 会丢失，导致上层 `new PageInfo(list).getTotal()` 回退为 `list.size()`，出现「总数等于当前页条数」的问题。
+
+`build()` 会在转换前后自动捕获并重应用 `total`，因此配合 PageHelper 分页时**总数不会丢失，开箱即用，无需任何额外代码**：
+
+```java
+// Controller
+PageHelper.startPage(1, 20);
+List<Order> orders = orderMapper.findAll();   // 返回 Page<Order>，total 正确
+
+List<OrderVO> voList = RelationAssembler.from(orders, OrderVO.class, orderMapper::toVO)
+    .withRelation(Order::getUserId,
+        ids -> userMapper.findAllById(ids),
+        User::getId, userMapper::toVO, OrderVO::setUser)
+    .build();
+// voList 仍携带 total，new PageInfo(voList).getTotal() 结果正确
+
+return getDataTable(voList);   // total 正确，不会回退成当前页条数
+```
+
+> **实现说明**：本库通过反射检测 `PageHelper` 的 `Page` 类并透传 `total`，**零硬依赖**。当 classpath 中不存在 PageHelper 时，相关逻辑自动跳过，无任何性能损耗。
+
+### MyBatis-Plus 分页
+
+MyBatis-Plus 的 `IPage` 与 `List` 是两个独立对象：当前页数据在 `page.getRecords()`，总数在 `page.getTotal()`。由于 `RelationAssembler.from(List<S>)` 的入口只接收 `List`，传入 `page.getRecords()` 后 total 不在转换链中，需要调用方手动重组：
+
+```java
+IPage<Order> page = orderMapper.selectPage(new Page<>(1, 20), wrapper);
+
+List<OrderVO> voList = RelationAssembler.from(page.getRecords(), OrderVO.class, orderMapper::toVO)
+    .withRelation(Order::getUserId,
+        ids -> userMapper.selectBatchIds(ids),
+        User::getId, userMapper::toVO, OrderVO::setUser)
+    .build();
+
+// 用原分页信息重组 IPage<OrderVO>
+IPage<OrderVO> voPage = new Page<>(page.getCurrent(), page.getSize(), page.getTotal());
+voPage.setRecords(voList);
+return voPage;
+```
+
+> **为什么不自动透传**：MyBatis-Plus 的 total 存放在 `IPage` 对象上，而本库入口签名为 `from(List<S>)`，传入的 `getRecords()` 是不带 total 的普通 `List`，转换链中本就没有 total 可丢失。这是分页框架设计差异决定的，并非缺陷。
 
 ## 多层嵌套查询
 
@@ -2442,6 +2500,11 @@ public interface BeanCopier<S, T> {
 | `MapStructBeanCopier` | `MapStructBeanCopier.of(Function<S,T>)` | 无（包装转换函数） |
 
 ## 更新日志
+
+### 1.3.0
+- 修复：`build()` 配合 PageHelper 分页时丢失分页总数 `total` 的问题。现在 `build()` 会自动捕获并透传 `com.github.pagehelper.Page` 上的 `total`，避免上层 `new PageInfo(list).getTotal()` 回退为当前页条数
+- 新增：分页信息透传工具 `PageHelperPagination`（内部使用，反射实现，零硬依赖）
+- 文档：新增「分页查询集成」章节，说明 PageHelper 自动透传与 MyBatis-Plus 分页用法
 
 ### 1.2.0
 - 新增 `withNested` / `withNestedList` 嵌套关联配置方法，声明式配置多层嵌套关联，库内部自动处理 ID 提取、批量查询和对象组装

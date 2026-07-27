@@ -816,12 +816,19 @@ public class RelationAssembler<S, T> {
                 return new ArrayList<>();
             }
 
-            // 分页处理
+            // 捕获 PageHelper 分页总数（若源列表为 PageHelper 的 Page），避免转换后丢失
+            Long pageTotal = PageHelperPagination.captureTotal(sourceList);
+
+            List<T> result;
+            // 内存分批处理（与 PageHelper 的 DB 分页是不同概念，二者互不影响）
             if (pageSize > 0 && sourceList.size() > pageSize) {
-                return buildWithPaging();
+                result = buildWithPaging();
+            } else {
+                result = doBuild(sourceList);
             }
 
-            return doBuild(sourceList);
+            // 透传 PageHelper 分页总数到结果，保持上层 PageInfo.getTotal() 正确
+            return PageHelperPagination.applyTotal(pageTotal, result);
         }
 
         /**
